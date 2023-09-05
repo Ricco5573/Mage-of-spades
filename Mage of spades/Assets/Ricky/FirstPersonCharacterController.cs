@@ -19,15 +19,14 @@ public class FirstPersonCharacterController : MonoBehaviour
 
     private float bobTimer = 0;
     private bool isRunning = false;
-
+    private Rigidbody rb;
     public GameObject swordHitbox;
     public float swordSwingCooldown = 1.0f;
     public float heavyAttackCooldown = 2.0f;
-    public float swordDamage = 10.0f;
+    public float swordDamage = 1.0f;
     public float heavyAttackDamage = 20.0f;
 
     private bool canSwingSword = true;
-    private bool isHeavyAttack = false;
 
     void Start()
     {
@@ -35,6 +34,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         Cursor.visible = false;
 
         playerCamera = GetComponentInChildren<Camera>();
+        rb = playerCamera.gameObject.GetComponent<Rigidbody>();
         characterController = GetComponent<CharacterController>();
     }
 
@@ -60,16 +60,9 @@ public class FirstPersonCharacterController : MonoBehaviour
         {
             if (Input.GetMouseButtonDown(0))
             {
-                SwingSword(isHeavyAttack);
+                SwingSword();
             }
-            else if (Input.GetMouseButton(0))
-            {
-                isHeavyAttack = true;
-            }
-            else if (Input.GetMouseButtonUp(0))
-            {
-                isHeavyAttack = false;
-            }
+
         }
 
 
@@ -99,8 +92,6 @@ public class FirstPersonCharacterController : MonoBehaviour
         }
         if (characterController.isGrounded && Mathf.Abs(forwardSpeed) != 0 || characterController.isGrounded && Mathf.Abs(strafeSpeed) != 0)
         {
-            Debug.Log("ForwardSpeed: " + forwardSpeed);
-            Debug.Log("strafeSpeed: " + strafeSpeed);
 
             float bobY = Mathf.Cos(bobTimer * 2) * bobAmplitude * 4;
 
@@ -146,16 +137,16 @@ public class FirstPersonCharacterController : MonoBehaviour
     }
 
 
-    void SwingSword(bool heavyAttack)
+    void SwingSword()
     {
         canSwingSword = false;
-        StartCoroutine(SwordCooldown(heavyAttack ? heavyAttackCooldown : swordSwingCooldown));
+        StartCoroutine(SwordCooldown(swordSwingCooldown));
 
         // Activate the sword hitbox (make sure it's a trigger collider)
         swordHitbox.SetActive(true);
 
         // Send a message to the target to convey the attack type
-        SendMessageToTarget(heavyAttack ? heavyAttackDamage : swordDamage);
+        SendMessageToTarget((int)(swordDamage));
 
         // Deactivate the sword hitbox after a short delay
         StartCoroutine(DeactivateSwordHitbox());
@@ -173,20 +164,31 @@ public class FirstPersonCharacterController : MonoBehaviour
         swordHitbox.SetActive(false);
     }
 
-    void SendMessageToTarget(float damage)
+    void SendMessageToTarget(int damage)
     {
         RaycastHit hit;
         if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, 2.0f))
         {
             // Check if the object hit has a script that can take damage
-           // Enemy target = hit.collider.GetComponent<Enemy>();
-         /*   if (target != null)
+            Enemy target = hit.collider.GetComponent<Enemy>();
+            if (target != null)
             {
-                target.TakeDamage(damage, isHeavyAttack);
-            } */
+                target.TakeDamage(damage);
+            } 
         }
     }
-
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.tag == "EnemyHurtBox")
+        {
+            Death();
+        }
+    }
+    public void Death()
+    {
+        playerCamera.gameObject.transform.parent = null;
+        rb.isKinematic = false;
+    }
     /*  void UpdateCameraPosition()
       {
           if (isRunning)
