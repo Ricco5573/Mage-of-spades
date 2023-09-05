@@ -12,16 +12,18 @@ public class Enemy : MonoBehaviour
     public float attackCooldown = 2f;
     public float attackRange = 2f;
     public float damage = 10f;
-
+    public CharacterController cc;
+    public GameObject hurtBox;
     private Transform player;
     private bool isDormant = false;
     private float lastAttackTime;
-
+    private bool attacking = false;
     // Start is called before the first frame update
     void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player").transform;
         rb = GetComponent<Rigidbody>();
+        cc = GetComponent<CharacterController>();
     }
 
     public void TakeDamage(int damage)
@@ -36,6 +38,7 @@ public class Enemy : MonoBehaviour
     }
     void Update()
     {
+        
         if (isDormant)
         {
             // Do nothing in dormant mode.
@@ -46,14 +49,18 @@ public class Enemy : MonoBehaviour
         if (Vector3.Distance(transform.position, player.position) <= detectionRange)
         {
             // Move towards the player.
-            Vector3 direction = (player.position - transform.position).normalized;
-            transform.Translate(direction * moveSpeed * Time.deltaTime);
-
+           transform.LookAt(new Vector3(player.position.x, this.transform.position.y, player.position.z));
+            if (Vector3.Distance(transform.position, player.position) >= attackRange && !attacking)
+            {
+                Vector3 direction = (player.position - transform.position).normalized;
+                Vector3 movement = new Vector3(direction.x, -0.5f, direction.z);
+                cc.Move(movement * moveSpeed);
+            }
             // Check if it's time to attack.
             if (Time.time - lastAttackTime >= attackCooldown &&
-                Vector3.Distance(transform.position, player.position) <= attackRange)
+                Vector3.Distance(transform.position, player.position) <= attackRange && !attacking)
             {
-                Attack();
+               StartCoroutine( Attack());
             }
         }
     }
@@ -65,9 +72,16 @@ public class Enemy : MonoBehaviour
     }
 
     // Function to perform an attack.
-    void Attack()
+    IEnumerator Attack()
     {
+        attacking = true;
+        yield return new WaitForSecondsRealtime(0.1f);
         // Perform the attack action here (e.g., damage the player).
+        hurtBox.gameObject.SetActive(true);
+        yield return new WaitForSecondsRealtime(0.2f);
+        Debug.Log("Attack");
+        hurtBox.gameObject.SetActive(false);
+        attacking = false;
         // You can implement this according to your game's mechanics.
 
         // Set the last attack time to the current time.
