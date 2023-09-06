@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class FirstPersonCharacterController : MonoBehaviour
 {
@@ -27,11 +28,13 @@ public class FirstPersonCharacterController : MonoBehaviour
     public float heavyAttackDamage = 20.0f;
     private bool dead = false;
     private bool canSwingSword = true;
+    private bool blocking;
+    private bool canBlock = true; 
 
     void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+        UnityEngine.Cursor.visible = false;
 
         playerCamera = GetComponentInChildren<Camera>();
         rb = playerCamera.gameObject.GetComponent<Rigidbody>();
@@ -64,11 +67,21 @@ public class FirstPersonCharacterController : MonoBehaviour
                 {
                     SwingSword();
                 }
-
+                if (canBlock)
+                {
+                    if (Input.GetMouseButton(1))
+                    {
+                        StartCoroutine(Blocking(true, false));
+                    }
+                    if (Input.GetMouseButtonUp(1))
+                    {
+                        StartCoroutine(Blocking(false, false));
+                    }
+                }
             }
 
 
-            // Jumping
+                // Jumping
             if (characterController.isGrounded)
             {
 
@@ -146,9 +159,6 @@ public class FirstPersonCharacterController : MonoBehaviour
         // Activate the sword hitbox (make sure it's a trigger collider)
         swordHitbox.SetActive(true);
 
-        // Send a message to the target to convey the attack type
-        SendMessageToTarget((int)(swordDamage));
-
         // Deactivate the sword hitbox after a short delay
         StartCoroutine(DeactivateSwordHitbox());
     }
@@ -165,25 +175,37 @@ public class FirstPersonCharacterController : MonoBehaviour
         swordHitbox.SetActive(false);
     }
 
-    void SendMessageToTarget(int damage)
+    private IEnumerator Blocking(bool enter, bool hit)
     {
-        RaycastHit hit;
-        if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, 2.0f))
+        if (enter)
         {
-            // Check if the object hit has a script that can take damage
-            Enemy target = hit.collider.GetComponent<Enemy>();
-            if (target != null)
-            {
-                target.TakeDamage(damage);
-            } 
+            blocking = true;
+            Debug.Log("Blocking");
+        }
+        else if(!enter && !hit)
+        {
+            blocking = false;
+        }
+        else if(!enter && hit)
+        {
+            blocking = false;
+            canBlock = false;
+            StartCoroutine(SwordCooldown(swordSwingCooldown));
+            characterController.Move(-Vector3.forward * 3);
+            yield return new WaitForSeconds(2);
+            canBlock = true;
         }
     }
-
-    private void OnTriggerStay(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject.tag == "EnemyHurtBox")
+        if (other.gameObject.tag == "EnemyHurtBox" && !blocking)
         {
             Death();
+        }
+        else if (blocking)
+        {
+            other.gameObject.transform.GetComponentInParent<Enemy>().Blocked();
+            StartCoroutine(Blocking(false, true));
         }
     }
     public void Death()
@@ -195,21 +217,4 @@ public class FirstPersonCharacterController : MonoBehaviour
         rb.AddTorque(new Vector3(-200, 100));
         Destroy(this.gameObject);
     }
-    /*  void UpdateCameraPosition()
-      {
-          if (isRunning)
-          {
-              // Adjust camera position while running
-              Vector3 cameraPos = playerCamera.transform.localPosition;
-              cameraPos.y = 1.5f;
-              playerCamera.transform.localPosition = cameraPos;
-          }
-          else
-          {
-              // Reset camera position while walking
-              Vector3 cameraPos = playerCamera.transform.localPosition;
-              cameraPos.y = 1.7f;
-              playerCamera.transform.localPosition = cameraPos;
-          }
-      } */
 }

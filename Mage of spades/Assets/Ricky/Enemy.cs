@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering.Universal.Internal;
 
 public class Enemy : MonoBehaviour
 {
@@ -12,6 +15,7 @@ public class Enemy : MonoBehaviour
     public float attackCooldown = 2f;
     public float attackRange = 2f;
     public float damage = 10f;
+    public float attackwindUp = 0.1f;
     public CharacterController cc;
     public GameObject hurtBox;
     private Transform player;
@@ -32,13 +36,14 @@ public class Enemy : MonoBehaviour
         health -= damage; 
         if(health <= 0)
         {
+            Destroy(this.gameObject);
             rb.useGravity = true;
         }
 
     }
     void Update()
     {
-        
+
         if (isDormant)
         {
             // Do nothing in dormant mode.
@@ -49,7 +54,7 @@ public class Enemy : MonoBehaviour
         if (Vector3.Distance(transform.position, player.position) <= detectionRange)
         {
             // Move towards the player.
-           transform.LookAt(new Vector3(player.position.x, this.transform.position.y, player.position.z));
+            transform.LookAt(new Vector3(player.position.x, this.transform.position.y, player.position.z));
             if (Vector3.Distance(transform.position, player.position) >= attackRange && !attacking)
             {
                 Vector3 direction = (player.position - transform.position).normalized;
@@ -57,12 +62,28 @@ public class Enemy : MonoBehaviour
                 cc.Move(movement * moveSpeed);
             }
             // Check if it's time to attack.
-            if (Time.time - lastAttackTime >= attackCooldown &&
-                Vector3.Distance(transform.position, player.position) <= attackRange && !attacking)
+            if (Time.time - lastAttackTime >= attackCooldown && !attacking  )
             {
-               StartCoroutine( Attack());
+                // Calculate the time when the player will enter the attack range.
+                if (Vector3.Distance(transform.position, player.position) > attackRange)
+                {
+                    Debug.Log("Not in range");
+                    float timeToAttack = Vector3.Distance(transform.position, player.position) / moveSpeed;
+                    if (timeToAttack <= attackwindUp)
+                    {
+                        Debug.Log("winding up!");
+                        StartCoroutine(Attack());
+
+                    }
+                }
+                else
+                {
+                    Debug.Log("In range");
+                    StartCoroutine(Attack());
+
+                }
+                }
             }
-        }
     }
 
     // Function to make the enemy leave dormant mode.
@@ -70,7 +91,20 @@ public class Enemy : MonoBehaviour
     {
         isDormant = false;
     }
-
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.tag == "PlayerHurtBox")
+        {
+            TakeDamage(1);
+        }
+    }
+    public void Blocked()
+    {
+        hurtBox.gameObject.SetActive(false);
+        cc.Move(-Vector3.forward * 3);
+        lastAttackTime = Time.time;
+        attacking = false;
+    }
     // Function to perform an attack.
     IEnumerator Attack()
     {
