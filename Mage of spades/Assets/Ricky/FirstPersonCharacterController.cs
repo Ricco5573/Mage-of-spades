@@ -9,6 +9,7 @@ public class FirstPersonCharacterController : MonoBehaviour
     public float walkSpeed = 5.0f;
     public float runSpeed = 10.0f;
     public float jumpForce = 5.0f;
+    public float wallRunDuration = 1f;
 
     private Camera playerCamera;
     private CharacterController characterController;
@@ -16,7 +17,12 @@ public class FirstPersonCharacterController : MonoBehaviour
     private float verticalVelocity = 0;
     public float bobFrequency = 2.0f;
     public float strafeTiltAngle = 10.0f;
+
+
     public float bobAmplitude = 0.1f;
+    private bool wallRunning, wallLeft, wallRight, canWallRun;
+    private Coroutine wallRunRoutine;
+    public float wallRunThreshold = 15f;
 
     private float bobTimer = 0;
     private bool isRunning = false;
@@ -29,13 +35,12 @@ public class FirstPersonCharacterController : MonoBehaviour
     private bool dead = false;
     private bool canSwingSword = true;
     private bool blocking;
-    private bool canBlock = true; 
+    private bool canBlock = true;
 
     void Start()
     {
         UnityEngine.Cursor.lockState = CursorLockMode.Locked;
         UnityEngine.Cursor.visible = false;
-
         playerCamera = GetComponentInChildren<Camera>();
         rb = playerCamera.gameObject.GetComponent<Rigidbody>();
         characterController = GetComponent<CharacterController>();
@@ -56,8 +61,33 @@ public class FirstPersonCharacterController : MonoBehaviour
             float moveSpeed = isRunning ? runSpeed : walkSpeed;
             float forwardSpeed = Input.GetAxis("Vertical") * moveSpeed;
             float strafeSpeed = Input.GetAxis("Horizontal") * moveSpeed;
+            Vector3 speed = Vector3.zero;
+            if (!wallRunning)
+            {
+                speed = new Vector3(strafeSpeed, verticalVelocity, forwardSpeed);
 
-            Vector3 speed = new Vector3(strafeSpeed, verticalVelocity, forwardSpeed);
+            }
+            else
+            {
+
+                if(rb.velocity.x < 15 && rb.velocity.z < 15 && rb.velocity.x > -15 && rb.velocity.z > -15)
+                {
+                    AbortWallRun(false);
+                }
+                if (wallLeft)
+                {
+                    speed = new Vector3(strafeSpeed + Physics.gravity.y * Time.deltaTime, verticalVelocity, forwardSpeed);
+                }
+                else if (wallRight)
+                {
+                    speed = new Vector3(strafeSpeed - Physics.gravity.y * Time.deltaTime, verticalVelocity, forwardSpeed);
+                }
+            }
+            if (canWallRun && !characterController.isGrounded && !wallRunning)
+            {
+                    StartWallRun();
+            }
+
             speed = transform.rotation * speed;
             characterController.Move(speed * Time.deltaTime);
 
@@ -81,7 +111,7 @@ public class FirstPersonCharacterController : MonoBehaviour
             }
 
 
-                // Jumping
+            // Jumping
             if (characterController.isGrounded)
             {
 
@@ -90,7 +120,7 @@ public class FirstPersonCharacterController : MonoBehaviour
                     verticalVelocity = jumpForce;
                 }
             }
-            else
+            else if (!wallRunning)
             {
                 verticalVelocity += Physics.gravity.y * Time.deltaTime;
             }
@@ -118,28 +148,23 @@ public class FirstPersonCharacterController : MonoBehaviour
                 {
                     bobTimer += Time.deltaTime * bobFrequency;
                 }
-                if (characterController.isGrounded)
+                float tiltAngle = 0;
+
+                if (Mathf.Abs(strafeSpeed) > 0.1f)
                 {
-                    float tiltAngle = 0;
+                    tiltAngle = strafeTiltAngle * Mathf.Sign(strafeSpeed);
 
-                    if (Mathf.Abs(strafeSpeed) > 0.1f)
-                    {
-                        tiltAngle = strafeTiltAngle * Mathf.Sign(strafeSpeed);
-
-                        playerCamera.transform.localRotation = Quaternion.Euler(verticalRotation, 0, -tiltAngle);
-                    }
-
+                    playerCamera.transform.localRotation = Quaternion.Euler(verticalRotation, 0, -tiltAngle);
                 }
-                else
-                {
-                    bobTimer = 0;
-                }
+
+
             }
 
 
             else
             {
                 // Reset camera position when jumping
+                bobTimer = 0;
                 Vector3 cameraPos = playerCamera.transform.localPosition;
                 cameraPos.y = 1.7f;
                 playerCamera.transform.localPosition = cameraPos;
@@ -150,7 +175,34 @@ public class FirstPersonCharacterController : MonoBehaviour
         // UpdateCameraPosition();
     }
 
+    private void StartWallRun()
+    {
+        if (verticalVelocity < 0)
+        {
+            verticalVelocity = 0;
+        }
+       wallRunRoutine = StartCoroutine(WallRunning());
+    }
 
+    private IEnumerator WallRunning()
+    {
+        wallRunning = true;
+        transform.rotation = Quaternion.Slerp(transform.rotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, -15, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, 15, transform.rotation.w), 1);
+        yield return new WaitForSeconds(wallRunDuration);
+        transform.rotation = Quaternion.Slerp(transform.rotation, new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), 1);
+
+        wallRunning = false;
+        canWallRun = false;
+    }
+
+    private void AbortWallRun(bool jump)
+    {
+        StopCoroutine(wallRunRoutine);
+        transform.rotation = Quaternion.Slerp(transform.rotation, new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), 1);
+        wallRunning = false;
+        canWallRun = false;
+         
+    }
     void SwingSword()
     {
         canSwingSword = false;
@@ -182,11 +234,11 @@ public class FirstPersonCharacterController : MonoBehaviour
             blocking = true;
             Debug.Log("Blocking");
         }
-        else if(!enter && !hit)
+        else if (!enter && !hit)
         {
             blocking = false;
         }
-        else if(!enter && hit)
+        else if (!enter && hit)
         {
             blocking = false;
             canBlock = false;
