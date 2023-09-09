@@ -10,10 +10,11 @@ public class FirstPersonCharacterController : MonoBehaviour
     public float walkSpeed = 5.0f;
     public float runSpeed = 10.0f;
     public float jumpForce = 5.0f;
-    public float wallRunDuration = 1f;
+
     private CharacterController characterController;
     private bool isRunning = false;
     private Rigidbody rb;
+    private Rigidbody crb;
 
     //Variables for Camera movements
     private Camera playerCamera;
@@ -27,9 +28,8 @@ public class FirstPersonCharacterController : MonoBehaviour
     //Variables for wallRunning
     private bool wallRunning, wallLeft, wallRight, canWallRun;
     private Coroutine wallRunRoutine;
-    public float wallRunThreshold = 15f;
-
-
+    public float wallRunDuration = 1.5f;
+    public float wallRunTransition = 0;
 
     //Variables for attacking
     public GameObject swordHitbox;
@@ -51,7 +51,8 @@ public class FirstPersonCharacterController : MonoBehaviour
 
         //Set camera, Rigidbody and characterController
         playerCamera = GetComponentInChildren<Camera>();
-        rb = playerCamera.gameObject.GetComponent<Rigidbody>();
+        rb = GetComponent<Rigidbody>();
+        crb = playerCamera.gameObject.GetComponent<Rigidbody>();
         characterController = GetComponent<CharacterController>();
     }
 
@@ -76,7 +77,11 @@ public class FirstPersonCharacterController : MonoBehaviour
             if (!wallRunning)
             {
                 speed = new Vector3(strafeSpeed, verticalVelocity, forwardSpeed);
-
+                if(wallRunTransition > 0)
+                {
+                    transform.rotation = Quaternion.Slerp(transform.rotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), wallRunTransition);
+                    wallRunTransition -= Time.deltaTime;
+                }
             }
             //WallRunning Code. Check if velocity is high enough, whether there are walls on either side. And if one is not true, abort the wallrun
             else
@@ -99,6 +104,9 @@ public class FirstPersonCharacterController : MonoBehaviour
                 {
                     speed = new Vector3(strafeSpeed - Physics.gravity.y * Time.deltaTime, verticalVelocity, forwardSpeed);
                 }
+                var rotation = Quaternion.Euler(0, 0, 15);
+                transform.rotation = Quaternion.Slerp(transform.rotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, -rotation.z, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, rotation.z, transform.rotation.w), wallRunTransition);
+                wallRunTransition += Time.deltaTime;
             }
             //If there is a wall on either side, then check if the player can wallrun, is in the air, and not already wallrunning, then enable wallrunning.
             if (wallLeft || wallRight)
@@ -212,10 +220,10 @@ public class FirstPersonCharacterController : MonoBehaviour
     {
         //start wallrunning, rotate the player away from the wall for extra visual flair.
         wallRunning = true;
-        transform.rotation = Quaternion.Slerp(transform.rotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, -15, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, 15, transform.rotation.w), 1);
+
         yield return new WaitForSeconds(wallRunDuration);
         //Turn camera back, and disable wallrunning untill player comes in contact with the ground.
-        transform.rotation = Quaternion.Slerp(transform.rotation, new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), 1);
+
 
         wallRunning = false;
         canWallRun = false;
@@ -226,10 +234,21 @@ public class FirstPersonCharacterController : MonoBehaviour
         //If the player doesnt move fast enough, or the wall ends. Abort the coroutine, and stop the wallrun immediately.
         //Otherwise, if its a jump, do the same, but also propell the player up and away from the wall.
         StopCoroutine(wallRunRoutine);
-        transform.rotation = Quaternion.Slerp(transform.rotation, new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), 1);
         wallRunning = false;
         canWallRun = false;
          
+    }
+
+    public void SetWalls(bool wall, bool isLeft)
+    {
+        if(isLeft)
+        {
+            wallLeft = wall;
+        }
+        else
+        {
+            wallRight = wall;
+        }
     }
     void SwingSword()
     {
