@@ -28,7 +28,7 @@ public class FirstPersonCharacterController : MonoBehaviour
     //Variables for wallRunning
     private bool wallRunning, wallLeft, wallRight, canWallRun;
     private Coroutine wallRunRoutine;
-    public float wallRunDuration = 1.5f;
+    public float wallRunDuration = 5f;
     public float wallRunTransition = 0;
 
     //Variables for attacking
@@ -77,36 +77,41 @@ public class FirstPersonCharacterController : MonoBehaviour
             if (!wallRunning)
             {
                 speed = new Vector3(strafeSpeed, verticalVelocity, forwardSpeed);
-                if(wallRunTransition > 0)
+                if(wallRunTransition < 1)
                 {
-                    transform.rotation = Quaternion.Slerp(transform.rotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), wallRunTransition);
-                    wallRunTransition -= Time.deltaTime;
+                    transform.localRotation = Quaternion.Slerp(transform.localRotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), wallRunTransition);
+                    wallRunTransition += Time.deltaTime;
                 }
             }
             //WallRunning Code. Check if velocity is high enough, whether there are walls on either side. And if one is not true, abort the wallrun
             else
             {
 
-                if(rb.velocity.x < 15 && rb.velocity.z < 15 && rb.velocity.x > -15 && rb.velocity.z > -15)
+                if(rb.velocity.x < 5 && rb.velocity.z < 5 && rb.velocity.x > -5 && rb.velocity.z > -5)
                 {
+                    Debug.Log("Stopping wallrunning, not fast enough!");
                     AbortWallRun(false);
                 }
                 else if(!wallLeft && !wallRight)
                 {
+                    Debug.Log("Stopping wallrunning, no walls!");
+
                     AbortWallRun(false);
                 }
                 //If there are walls, then attract to these walls.
                 if (wallLeft)
                 {
-                    speed = new Vector3(strafeSpeed + Physics.gravity.y * Time.deltaTime, verticalVelocity, forwardSpeed);
+                    speed = new Vector3(strafeSpeed + Physics.gravity.y * Time.deltaTime * 2, verticalVelocity, forwardSpeed);
                 }
                 else if (wallRight)
                 {
-                    speed = new Vector3(strafeSpeed - Physics.gravity.y * Time.deltaTime, verticalVelocity, forwardSpeed);
+                    speed = new Vector3(strafeSpeed - Physics.gravity.y * Time.deltaTime * 2, verticalVelocity, forwardSpeed);
                 }
-                var rotation = Quaternion.Euler(0, 0, 15);
-                transform.rotation = Quaternion.Slerp(transform.rotation, wallLeft ? new Quaternion(transform.rotation.x, transform.rotation.y, -rotation.z, transform.rotation.w) : new Quaternion(transform.rotation.x, transform.rotation.y, rotation.z, transform.rotation.w), wallRunTransition);
+                Vector3 rotation = new Vector3(0, 0, transform.localRotation.z + 15);
+                Vector3 newRotation = Vector3.Slerp(new Vector3(0,0,0), wallLeft ? new Vector3(0, 0, -rotation.z) : new Vector3( 0, 0, rotation.z), wallRunTransition);
+                transform.localRotation = transform.localRotation * Quaternion.Euler(transform.localRotation.x, transform.localRotation.y, newRotation.z);
                 wallRunTransition += Time.deltaTime;
+
             }
             //If there is a wall on either side, then check if the player can wallrun, is in the air, and not already wallrunning, then enable wallrunning.
             if (wallLeft || wallRight)
@@ -208,6 +213,8 @@ public class FirstPersonCharacterController : MonoBehaviour
 
     private void StartWallRun()
     {
+        wallRunTransition = 0;
+
         //If falling, stop falling.
         if (verticalVelocity < 0)
         {
@@ -223,7 +230,7 @@ public class FirstPersonCharacterController : MonoBehaviour
 
         yield return new WaitForSeconds(wallRunDuration);
         //Turn camera back, and disable wallrunning untill player comes in contact with the ground.
-
+        wallRunTransition = 0;
 
         wallRunning = false;
         canWallRun = false;
@@ -236,7 +243,9 @@ public class FirstPersonCharacterController : MonoBehaviour
         StopCoroutine(wallRunRoutine);
         wallRunning = false;
         canWallRun = false;
-         
+        wallRunTransition = 0;
+
+
     }
 
     public void SetWalls(bool wall, bool isLeft)
@@ -279,7 +288,6 @@ public class FirstPersonCharacterController : MonoBehaviour
         if (enter)
         {
             blocking = true;
-            Debug.Log("Blocking");
         }
         else if (!enter && !hit)
         {

@@ -761,7 +761,7 @@ MonoBehaviour:
   bobFrequency: 5
   strafeTiltAngle: 2
   bobAmplitude: 0.03
-  wallRunDuration: 1
+  wallRunDuration: 2.5
   wallRunTransition: 0
   swordHitbox: {fileID: 166346482}
   swordSwingCooldown: 1
@@ -838,7 +838,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 813132668}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.9, y: 2.015, z: -97.8}
+  m_LocalPosition: {x: 23.7, y: 2.015, z: -150.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
