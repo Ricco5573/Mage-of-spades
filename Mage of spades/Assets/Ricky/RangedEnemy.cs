@@ -11,11 +11,14 @@ public class RangedEnemy : MonoBehaviour
     private float health = 1;
     private bool canAttack = true;
     private Rigidbody rb;
-
+    [SerializeField]
+    private GameObject bow;
+    private Animator bowAnim;
     void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player").transform;
         rb = GetComponent<Rigidbody>();
+        bowAnim = bow.GetComponent<Animator>();
     }
 
     void Update()
@@ -39,6 +42,7 @@ public class RangedEnemy : MonoBehaviour
     IEnumerator ShootArrow()
     {
         canAttack = false;
+        bowAnim.SetBool("Drawn", true);
         yield return new WaitForSeconds(1.5f);
 
         // Calculate arrow travel time based on player distance and arrow speed.
@@ -52,7 +56,8 @@ public class RangedEnemy : MonoBehaviour
         GameObject arrow = Instantiate(arrowPrefab, transform.position, Quaternion.identity);
         Vector3 arrowDirection = (predictedPosition - transform.position).normalized;
         arrow.GetComponent<Rigidbody>().velocity = arrowDirection * arrowSpeed;
-        arrow.transform.LookAt(player.position);
+        arrow.transform.LookAt(predictedPosition);
+        bowAnim.SetBool("Drawn", false);
 
         // Wait for the attack cooldown.
         yield return new WaitForSeconds(attackCooldown);

@@ -343,19 +343,25 @@ public class FirstPersonCharacterController : MonoBehaviour
         //If exiting with being hit, then disable blocking for a moment and propell the player and the attacker backwards.
         if (enter)
         {
+            Debug.Log("Blocking");
             blocking = true;
+            swordAnim.SetBool("Blocking", true);
         }
         else if (!enter && !hit)
         {
             blocking = false;
+            swordAnim.SetBool("Blocking", false);
         }
         else if (!enter && hit)
         {
             blocking = false;
             canBlock = false;
+            swordAnim.SetBool("BlockBroken", true);
             StartCoroutine(SwordCooldown(2f));
             Push(-rb.transform.forward, jumpForce);
             yield return new WaitForSeconds(2);
+            swordAnim.SetBool("Blocking", false);
+            swordAnim.SetBool("BlockBroken", false);
             canBlock = true;
         }
     }
