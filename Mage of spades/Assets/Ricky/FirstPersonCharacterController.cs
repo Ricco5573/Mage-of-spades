@@ -201,7 +201,7 @@ public class FirstPersonCharacterController : MonoBehaviour
                 float bobY = Mathf.Cos(bobTimer * 2) * bobAmplitude * 4;
 
                 Vector3 cameraPos = playerCamera.transform.localPosition;
-                cameraPos.y = 1.7f + bobY; // Adjust the vertical position as needed
+                cameraPos.y = 0.76f + bobY; // Adjust the vertical position as needed
                 playerCamera.transform.localPosition = cameraPos;
 
                 // Update the bob timer based on the player's movement speed
@@ -227,7 +227,7 @@ public class FirstPersonCharacterController : MonoBehaviour
                 // Reset camera position when jumping
                 bobTimer = 0;
                 Vector3 cameraPos = playerCamera.transform.localPosition;
-                cameraPos.y = 1.7f;
+                cameraPos.y = 0.76f;
                 playerCamera.transform.localPosition = cameraPos;
             }
             pushForce = Vector3.Lerp(pushForce, Vector3.zero, 5 * Time.deltaTime);
