@@ -8,12 +8,14 @@ public class RangedEnemy : MonoBehaviour
     public float detectionRange = 10f;
     public float attackCooldown = 2f;
     public float arrowSpeed = 20f;
-
+    private float health = 1;
     private bool canAttack = true;
+    private Rigidbody rb;
 
     void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player").transform;
+        rb = GetComponent<Rigidbody>();
     }
 
     void Update()
@@ -56,5 +58,23 @@ public class RangedEnemy : MonoBehaviour
         yield return new WaitForSeconds(attackCooldown);
 
         canAttack = true;
+    }
+    public void TakeDamage(int damage)
+    {
+        Debug.Log("Hit");
+        health -= damage;
+        if (health <= 0)
+        {
+            Destroy(this.gameObject);
+            rb.useGravity = true;
+        }
+
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.tag == "PlayerHurtBox")
+        {
+            TakeDamage(1);
+        }
     }
 }

@@ -39,15 +39,20 @@ public class FirstPersonCharacterController : MonoBehaviour
     private bool canAbortWallRun;
 
     //Variables for attacking
-    public GameObject swordHitbox;
+    public BoxCollider swordHitbox;
     public float swordSwingCooldown = 1.0f;
     public float swordDamage = 1.0f;
     private bool canSwingSword = true;
     private bool blocking;
     private bool canBlock = true;
 
+    //Variables for animating the sword;
+    private Animator swordAnim;
+
     //Variables for death (Spoiler alert, its only a bool which tells the script to stop working when set to true, cause yknow, dead)
     private bool dead = false;
+    [SerializeField]
+    private GameObject sword;
 
 
     void Start()
@@ -57,6 +62,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         UnityEngine.Cursor.visible = false;
 
         //Set camera, Rigidbody and characterController
+        swordAnim = GetComponentInChildren<Animator>();
         playerCamera = GetComponentInChildren<Camera>();
         rb = GetComponent<Rigidbody>();
         crb = playerCamera.gameObject.GetComponent<Rigidbody>();
@@ -105,13 +111,15 @@ public class FirstPersonCharacterController : MonoBehaviour
             {
                 if (canAbortWallRun)
                 {
-                    if (rb.velocity.x < 5 && rb.velocity.z < 5 && rb.velocity.x > -5 && rb.velocity.z > -5)
+                    if (forwardSpeed == 0)
                     {
                         AbortWallRun(false);
+                        Debug.Log("Aboring wallrun: not fast enough");
                     }
                     else if (!wallLeft && !wallRight)
                     {
                         AbortWallRun(false);
+                        Debug.Log("Aborting wallrun: no walls");    
                     }
                 }
                     //If there are walls, then attract to these walls.
@@ -255,7 +263,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         preRunRotation = Quaternion.Euler(0, 0, preRunRotation.z);
         preRunRotation = currenRotation * Quaternion.AngleAxis(0, Vector3.forward);
         canAbortWallRun = false;
-        yield return new WaitForSecondsRealtime(0.2f);
+        yield return new WaitForSecondsRealtime(0.3f);
         canAbortWallRun = true;
         yield return new WaitForSeconds(wallRunDuration);
         //Turn camera back, and disable wallrunning untill player comes in contact with the ground.
@@ -279,7 +287,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         {
             Debug.Log("Jumping from wall");
             verticalVelocity = jumpForce;
-            Push(wallLeft ? rb.transform.right : -  rb.transform.right, jumpForce * 25) ;
+            Push(wallLeft ? rb.transform.right : -  rb.transform.right, jumpForce * 5) ;
         }
         else
         {
@@ -322,9 +330,11 @@ public class FirstPersonCharacterController : MonoBehaviour
 
     IEnumerator DeactivateSwordHitbox()
     {
-        swordHitbox.SetActive(true);
+        swordHitbox.enabled = true;
+        swordAnim.SetBool("Swinging", true);
         yield return new WaitForSeconds(0.2f); // Adjust as needed
-        swordHitbox.SetActive(false);
+        swordHitbox.enabled = false;
+        swordAnim.SetBool("Swinging", false);
     }
 
     private IEnumerator Blocking(bool enter, bool hit)
@@ -344,7 +354,7 @@ public class FirstPersonCharacterController : MonoBehaviour
             blocking = false;
             canBlock = false;
             StartCoroutine(SwordCooldown(2f));
-            characterController.Move(-Vector3.forward * 3);
+            Push(-rb.transform.forward, jumpForce);
             yield return new WaitForSeconds(2);
             canBlock = true;
         }
@@ -367,11 +377,14 @@ public class FirstPersonCharacterController : MonoBehaviour
     {
         //disable access to movement
         dead = true;
-
+        
+        sword.transform.SetParent(null);
+        sword.GetComponent<Rigidbody>().isKinematic = false;
         //Make camera tumble to the ground, a nice visual indicator of death
         playerCamera.gameObject.transform.parent = null;
         crb.isKinematic = false;
         crb.AddTorque(new Vector3(-200, 100));
         Destroy(this.gameObject);
+
     }
 }
