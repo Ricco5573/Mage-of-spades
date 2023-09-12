@@ -279,7 +279,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         {
             Debug.Log("Jumping from wall");
             verticalVelocity = jumpForce;
-            Push(wallLeft ? rb.transform.right : -rb.transform.right, jumpForce * 25) ;
+            Push(wallLeft ? rb.transform.right : -  rb.transform.right, jumpForce * 25) ;
         }
         else
         {
