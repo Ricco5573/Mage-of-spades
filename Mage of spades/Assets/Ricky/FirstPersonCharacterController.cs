@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.PlasticSCM.Editor.WebApi;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 using UnityEngine.UIElements;
 
 public class FirstPersonCharacterController : MonoBehaviour
@@ -25,6 +26,7 @@ public class FirstPersonCharacterController : MonoBehaviour
     public float strafeTiltAngle = 10.0f;
     public float bobAmplitude = 0.1f;
     private float bobTimer = 0;
+    private float strafeSpeed;
 
     //Variables for wallRunning
     private bool wallRunning, wallLeft, wallRight, canWallRun;
@@ -32,6 +34,9 @@ public class FirstPersonCharacterController : MonoBehaviour
     public float wallRunDuration = 5f;
     public float wallRunTransition = 0;
     private Quaternion wallRunRotation;
+    private Quaternion preRunRotation;
+    private Vector3 pushForce;
+    private bool canAbortWallRun;
 
     //Variables for attacking
     public GameObject swordHitbox;
@@ -73,45 +78,57 @@ public class FirstPersonCharacterController : MonoBehaviour
             // Movement, move character controller.
             float moveSpeed = isRunning ? runSpeed : walkSpeed;
             float forwardSpeed = Input.GetAxis("Vertical") * moveSpeed;
-            float strafeSpeed = Input.GetAxis("Horizontal") * moveSpeed;
             Vector3 speed = Vector3.zero;
+
+            // consumes the impact energy each cycle:
+
+            if (characterController.isGrounded)
+            {
+                strafeSpeed = Input.GetAxis("Horizontal") * moveSpeed;
+            }
+            else
+            {
+                strafeSpeed = (Input.GetAxis("Horizontal") * moveSpeed) / 2;
+            }
 
             if (!wallRunning)
             {
                 speed = new Vector3(strafeSpeed, verticalVelocity, forwardSpeed);
                 if(wallRunTransition < 1)
                 {
-                    Debug.Log("Transitioning back");
-                    gameObject.transform.localRotation = Quaternion.Slerp(gameObject.transform.localRotation, new Quaternion(transform.rotation.x, transform.rotation.y, 0, transform.rotation.w), wallRunTransition);
-                    wallRunTransition += Time.deltaTime;
+                    gameObject.transform.localRotation = Quaternion.Slerp(gameObject.transform.localRotation, preRunRotation, wallRunTransition);
+                    wallRunTransition += Time.deltaTime * 2;
                 }
             }
             //WallRunning Code. Check if velocity is high enough, whether there are walls on either side. And if one is not true, abort the wallrun
             else if(canWallRun)
             {
-
-                if(rb.velocity.x < 5 && rb.velocity.z < 5 && rb.velocity.x > -5 && rb.velocity.z > -5)
+                if (canAbortWallRun)
                 {
-                    AbortWallRun(false);
+                    if (rb.velocity.x < 5 && rb.velocity.z < 5 && rb.velocity.x > -5 && rb.velocity.z > -5)
+                    {
+                        AbortWallRun(false);
+                    }
+                    else if (!wallLeft && !wallRight)
+                    {
+                        AbortWallRun(false);
+                    }
                 }
-                else if(!wallLeft && !wallRight)
+                    //If there are walls, then attract to these walls.
+                    if (wallLeft)
                 {
-
-
-                    AbortWallRun(false);
-                }
-                //If there are walls, then attract to these walls.
-                if (wallLeft)
-                {
-                    speed = new Vector3(Physics.gravity.y * Time.deltaTime * 10, verticalVelocity, forwardSpeed);
+                    speed = new Vector3(Physics.gravity.y * Time.deltaTime * 50, verticalVelocity, forwardSpeed);
                 }
                 else if (wallRight)
                 {
-                    speed = new Vector3(-Physics.gravity.y * Time.deltaTime * 10, verticalVelocity, forwardSpeed);
+                    speed = new Vector3(-Physics.gravity.y * Time.deltaTime * 50, verticalVelocity, forwardSpeed);
                 }
-
+                if (Input.GetButtonDown("Jump"))
+                {
+                    AbortWallRun(true);
+                }
                 gameObject.transform.localRotation = Quaternion.Slerp(gameObject.transform.localRotation, wallRunRotation, wallRunTransition);
-                wallRunTransition += Time.deltaTime;
+                wallRunTransition += Time.deltaTime * 2;
 
             }
             //If there is a wall on either side, then check if the player can wallrun, is in the air, and not already wallrunning, then enable wallrunning.
@@ -124,6 +141,10 @@ public class FirstPersonCharacterController : MonoBehaviour
             }
             //rest of the movement code.
             speed = transform.rotation * speed;
+            if (pushForce.magnitude > 0.2)
+            {
+                speed += pushForce;
+            }
             characterController.Move(speed * Time.deltaTime);
 
 
@@ -174,7 +195,7 @@ public class FirstPersonCharacterController : MonoBehaviour
             }
 
             //Headbob code. If on the ground and moving it will move the camera up and down.
-            if (characterController.isGrounded && Mathf.Abs(forwardSpeed) != 0 || characterController.isGrounded && Mathf.Abs(strafeSpeed) != 0)
+            if (characterController.isGrounded && Mathf.Abs(forwardSpeed) != 0 || characterController.isGrounded && Mathf.Abs(strafeSpeed) != 0 || wallRunning)
             {
 
                 float bobY = Mathf.Cos(bobTimer * 2) * bobAmplitude * 4;
@@ -209,6 +230,7 @@ public class FirstPersonCharacterController : MonoBehaviour
                 cameraPos.y = 1.7f;
                 playerCamera.transform.localPosition = cameraPos;
             }
+            pushForce = Vector3.Lerp(pushForce, Vector3.zero, 5 * Time.deltaTime);
         }
     }
 
@@ -229,7 +251,12 @@ public class FirstPersonCharacterController : MonoBehaviour
     {
         //start wallrunning, rotate the player away from the wall for extra visual flair.
         wallRunning = true;
-
+        Quaternion currenRotation = transform.localRotation;
+        preRunRotation = Quaternion.Euler(0, 0, preRunRotation.z);
+        preRunRotation = currenRotation * Quaternion.AngleAxis(0, Vector3.forward);
+        canAbortWallRun = false;
+        yield return new WaitForSecondsRealtime(0.2f);
+        canAbortWallRun = true;
         yield return new WaitForSeconds(wallRunDuration);
         //Turn camera back, and disable wallrunning untill player comes in contact with the ground.
         wallRunTransition = 0;
@@ -243,13 +270,28 @@ public class FirstPersonCharacterController : MonoBehaviour
         //If the player doesnt move fast enough, or the wall ends. Abort the coroutine, and stop the wallrun immediately.
         //Otherwise, if its a jump, do the same, but also propell the player up and away from the wall.
         StopCoroutine(wallRunRoutine);
-        Debug.Log("Aborting wallrun");
         wallRunRotation = new Quaternion(0, 0, 0, 0);
         wallRunning = false;
         canWallRun = false;
         wallRunTransition = 0;
 
-
+        if (jump)
+        {
+            Debug.Log("Jumping from wall");
+            verticalVelocity = jumpForce;
+            Push(wallLeft ? rb.transform.right : -rb.transform.right, jumpForce * 25) ;
+        }
+        else
+        {
+            Debug.Log("Aborting wallrun");
+        }
+    }
+    private void Push(Vector3 dir, float force)
+    {
+        Debug.Log("Push");
+        dir.Normalize();
+        if (dir.y < 0) dir.y = -dir.y; // reflect down force on the ground
+        pushForce += dir.normalized * force / rb.mass;
     }
 
     public void SetWalls(bool wall, bool isLeft)
@@ -328,8 +370,8 @@ public class FirstPersonCharacterController : MonoBehaviour
 
         //Make camera tumble to the ground, a nice visual indicator of death
         playerCamera.gameObject.transform.parent = null;
-        rb.isKinematic = false;
-        rb.AddTorque(new Vector3(-200, 100));
+        crb.isKinematic = false;
+        crb.AddTorque(new Vector3(-200, 100));
         Destroy(this.gameObject);
     }
 }
