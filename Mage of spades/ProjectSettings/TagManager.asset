@@ -4,14 +4,14 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - EnemyHurtBox
-  - PlayerHurtBox
-  - Wall
+  - Enemy
+  - EliteEnemy
+  - Fireball
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Ground
   - Water
   - UI
   - 
