@@ -14,7 +14,10 @@ public class SpellCollision : MonoBehaviour
 	private void OnCollisionEnter(Collision collision)
 	{
 		if (collision.collider.CompareTag("Enemy"))
+		{
 			Destroy(collision.gameObject);
+			Destroy(gameObject);
+		}
 		else if (collision.gameObject.layer == 3)
 			Destroy(gameObject);
 		else if (collision.collider.CompareTag("EliteEnemy")){

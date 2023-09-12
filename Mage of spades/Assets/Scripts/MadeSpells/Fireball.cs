@@ -20,7 +20,7 @@ public class Fireball : Spell
 		fireball = Instantiate(fireballPrefab, castingPosition.position, castingPosition.rotation);
 		fireballRb = fireball.GetComponent<Rigidbody>();
 		fireballRb.velocity = castingPosition.forward * fireballSpeed;
-		fireballRb.AddForce(0, 75, 0);
+		fireballRb.AddForce(0, 200, 0);
 		Debug.Log("Fireball!");
 	}
 

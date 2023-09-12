@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Spells : MonoBehaviour
+public class Spellcasting : MonoBehaviour
 {
     public int SpellSlots { get;  set; } = 15;
     bool canBlink = false;
@@ -34,7 +34,8 @@ public class Spells : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha2))
             if (CheckForSpellSlots(firebolt.SpellCost))
                 firebolt.Cast();
-		
+
+
         if (Input.GetKeyDown(KeyCode.Alpha3))
             if (CheckForSpellSlots(fireball.SpellCost))
                 fireball.Cast();
