@@ -50,13 +50,13 @@ public class RangedEnemy : MonoBehaviour
         float travelTime = playerDistance / arrowSpeed;
 
         // Calculate the predicted player position.
-        Vector3 predictedPosition = player.position + player.GetComponent<Rigidbody>().velocity * travelTime;
-        predictedPosition = predictedPosition + new Vector3(0, 2, 0);
+        Vector3 predictedPosition = player.position + player.GetComponent<FirstPersonCharacterController>().GetSpeed() * travelTime;
+        predictedPosition = predictedPosition + new Vector3(0, playerDistance, 0);
         // Create and shoot the arrow.
         GameObject arrow = Instantiate(arrowPrefab, transform.position, Quaternion.identity);
         Vector3 arrowDirection = (predictedPosition - transform.position).normalized;
         arrow.GetComponent<Rigidbody>().velocity = arrowDirection * arrowSpeed;
-        arrow.transform.LookAt(predictedPosition);
+        arrow.GetComponent<Arrow>().Instantiate(predictedPosition, this.gameObject);
         bowAnim.SetBool("Drawn", false);
 
         // Wait for the attack cooldown.

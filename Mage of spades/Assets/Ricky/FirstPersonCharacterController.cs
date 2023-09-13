@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.PlasticSCM.Editor.WebApi;
 using UnityEngine;
+using UnityEngine.SubsystemsImplementation;
 using UnityEngine.TextCore.Text;
 using UnityEngine.UIElements;
 
@@ -12,11 +13,11 @@ public class FirstPersonCharacterController : MonoBehaviour
     public float walkSpeed = 5.0f;
     public float runSpeed = 10.0f;
     public float jumpForce = 5.0f;
-
     private CharacterController characterController;
     private bool isRunning = false;
     private Rigidbody rb;
     private Rigidbody crb;
+    private Vector3 speed;
 
     //Variables for Camera movements
     private Camera playerCamera;
@@ -84,7 +85,6 @@ public class FirstPersonCharacterController : MonoBehaviour
             // Movement, move character controller.
             float moveSpeed = isRunning ? runSpeed : walkSpeed;
             float forwardSpeed = Input.GetAxis("Vertical") * moveSpeed;
-            Vector3 speed = Vector3.zero;
 
             // consumes the impact energy each cycle:
 
@@ -100,30 +100,28 @@ public class FirstPersonCharacterController : MonoBehaviour
             if (!wallRunning)
             {
                 speed = new Vector3(strafeSpeed, verticalVelocity, forwardSpeed);
-                if(wallRunTransition < 1)
+                if (wallRunTransition < 1)
                 {
                     gameObject.transform.localRotation = Quaternion.Slerp(gameObject.transform.localRotation, preRunRotation, wallRunTransition);
                     wallRunTransition += Time.deltaTime * 2;
                 }
             }
             //WallRunning Code. Check if velocity is high enough, whether there are walls on either side. And if one is not true, abort the wallrun
-            else if(canWallRun)
+            else if (canWallRun)
             {
                 if (canAbortWallRun)
                 {
                     if (forwardSpeed == 0)
                     {
                         AbortWallRun(false);
-                        Debug.Log("Aboring wallrun: not fast enough");
                     }
                     else if (!wallLeft && !wallRight)
                     {
                         AbortWallRun(false);
-                        Debug.Log("Aborting wallrun: no walls");    
                     }
                 }
-                    //If there are walls, then attract to these walls.
-                    if (wallLeft)
+                //If there are walls, then attract to these walls.
+                if (wallLeft)
                 {
                     speed = new Vector3(Physics.gravity.y * Time.deltaTime * 50, verticalVelocity, forwardSpeed);
                 }
@@ -181,7 +179,7 @@ public class FirstPersonCharacterController : MonoBehaviour
             // Jumping. If on the ground and pressing spacebar, jump. And if not on the ground and not wallrunning, apply gravity.
             if (characterController.isGrounded)
             {
-                canWallRun = true; 
+                canWallRun = true;
                 if (Input.GetButtonDown("Jump"))
                 {
                     verticalVelocity = jumpForce;
@@ -252,7 +250,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         {
             verticalVelocity = 0;
         }
-       wallRunRoutine = StartCoroutine(WallRunning());
+        wallRunRoutine = StartCoroutine(WallRunning());
     }
 
     private IEnumerator WallRunning()
@@ -268,7 +266,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         yield return new WaitForSeconds(wallRunDuration);
         //Turn camera back, and disable wallrunning untill player comes in contact with the ground.
         wallRunTransition = 0;
-        wallRunRotation = new Quaternion(0,0,0,0);
+        wallRunRotation = new Quaternion(0, 0, 0, 0);
         wallRunning = false;
         canWallRun = false;
     }
@@ -285,26 +283,24 @@ public class FirstPersonCharacterController : MonoBehaviour
 
         if (jump)
         {
-            Debug.Log("Jumping from wall");
             verticalVelocity = jumpForce;
-            Push(wallLeft ? rb.transform.right : -  rb.transform.right, jumpForce * 5) ;
-        }
-        else
-        {
-            Debug.Log("Aborting wallrun");
+            Push(wallLeft ? rb.transform.right : -rb.transform.right, jumpForce * 5);
         }
     }
     private void Push(Vector3 dir, float force)
     {
-        Debug.Log("Push");
         dir.Normalize();
         if (dir.y < 0) dir.y = -dir.y; // reflect down force on the ground
         pushForce += dir.normalized * force / rb.mass;
     }
 
+    public Vector3 GetSpeed()
+    {
+        return speed;
+    }
     public void SetWalls(bool wall, bool isLeft)
     {
-        if(isLeft)
+        if (isLeft)
         {
             wallLeft = wall;
         }
@@ -343,7 +339,6 @@ public class FirstPersonCharacterController : MonoBehaviour
         //If exiting with being hit, then disable blocking for a moment and propell the player and the attacker backwards.
         if (enter)
         {
-            Debug.Log("Blocking");
             blocking = true;
             swordAnim.SetBool("Blocking", true);
         }
@@ -373,17 +368,28 @@ public class FirstPersonCharacterController : MonoBehaviour
             Death();
         }
         //If however the player is blocking, the player will exit the block and be propelled backwards
-        else if (blocking)
+        else if (blocking && other.gameObject.tag == "EnemyHurtBox")
         {
-            other.gameObject.transform.GetComponentInParent<Enemy>().Blocked();
-            StartCoroutine(Blocking(false, true));
+            if (other.gameObject.transform.GetComponentInParent<Enemy>() != null)
+            {
+                other.gameObject.transform.GetComponentInParent<Enemy>().Blocked();
+                StartCoroutine(Blocking(false, true));
+
+            }
+            else
+            {
+                Destroy(other.gameObject);
+                StartCoroutine(Blocking(false, true));
+            }
+
+
         }
     }
     public void Death()
     {
         //disable access to movement
         dead = true;
-        
+
         sword.transform.SetParent(null);
         sword.GetComponent<Rigidbody>().isKinematic = false;
         //Make camera tumble to the ground, a nice visual indicator of death
