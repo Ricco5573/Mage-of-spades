@@ -24,8 +24,6 @@ public class Arrow : MonoBehaviour
     {
         dir = direction; 
         parent = prnt;
-        var directions = Quaternion.FromToRotation(-parent.transform.forward, -dir);
-        transform.rotation *= directions;
     }
 
 }

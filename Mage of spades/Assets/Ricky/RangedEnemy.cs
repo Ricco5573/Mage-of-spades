@@ -14,6 +14,7 @@ public class RangedEnemy : MonoBehaviour
     [SerializeField]
     private GameObject bow;
     private Animator bowAnim;
+    private Vector3 predictedPosition;
     void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player").transform;
@@ -50,10 +51,10 @@ public class RangedEnemy : MonoBehaviour
         float travelTime = playerDistance / arrowSpeed;
 
         // Calculate the predicted player position.
-        Vector3 predictedPosition = player.position + player.GetComponent<FirstPersonCharacterController>().GetSpeed() * travelTime;
-        predictedPosition = predictedPosition + new Vector3(0, playerDistance, 0);
+        predictedPosition = player.position + player.GetComponent<FirstPersonCharacterController>().GetSpeed() * travelTime;
+        predictedPosition = predictedPosition + new Vector3(0, playerDistance / 8, 0);
         // Create and shoot the arrow.
-        GameObject arrow = Instantiate(arrowPrefab, transform.position, Quaternion.identity);
+        GameObject arrow = Instantiate(arrowPrefab, transform.position, this.transform.rotation);
         Vector3 arrowDirection = (predictedPosition - transform.position).normalized;
         arrow.GetComponent<Rigidbody>().velocity = arrowDirection * arrowSpeed;
         arrow.GetComponent<Arrow>().Instantiate(predictedPosition, this.gameObject);
